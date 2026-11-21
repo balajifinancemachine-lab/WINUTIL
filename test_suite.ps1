@@ -87,6 +87,7 @@ $sourceFunctions = @(
     "Install-WinUtilScoop",
     "Install-WinUtilPythonEnv",
     "Install-WinUtilMCPServerSuite",
+    "Install-WinUtilDevExtensions",
     "Invoke-WinUtilOpenSourceSync"
 )
 $missingSources = @()
@@ -102,8 +103,8 @@ if ($missingSources.Count -eq 0) {
     $allPassed = $false
 }
 
-# Test 6: Python & MCP Development Package Catalog
-Write-Host "[Test 6] Python & MCP Development Catalog..." -NoNewline
+# Test 6: Python, Android, PHP & MCP Development Package Catalog
+Write-Host "[Test 6] Python, Android, PHP & MCP Development Catalog..." -NoNewline
 if ($scriptContent -match '(?ms)\$sync\.configs\.applications\s*=\s*@''\s*\r?\n(.*?)''@\s*\|\s*ConvertFrom-Json') {
     try {
         $appsJson = $matches[1] | ConvertFrom-Json
@@ -113,7 +114,10 @@ if ($scriptContent -match '(?ms)\$sync\.configs\.applications\s*=\s*@''\s*\r?\n(
             "WPFInstalljan", "WPFInstallbun", "WPFInstalldeno", "WPFInstallpodman",
             "WPFInstallwindsurf", "WPFInstallinsomnia", "WPFInstallpycharmce", "WPFInstallintellijce",
             "WPFInstalllapce", "WPFInstallandroidstudio", "WPFInstallzig", "WPFInstallwindowsterminal",
-            "WPFInstallunigetui", "WPFInstallmcpservers", "WPFInstallscoop"
+            "WPFInstallunigetui", "WPFInstallmcpservers", "WPFInstallscoop",
+            "WPFInstallplatformtools", "WPFInstallscrcpy", "WPFInstalldart", "WPFInstalljdk17",
+            "WPFInstallgenymotion", "WPFInstallphp", "WPFInstallcomposer", "WPFInstalllaragon",
+            "WPFInstallxampp", "WPFInstallddev", "WPFInstalljupyterlab", "WPFInstallbuildtools"
         )
         $missingApps = @()
         foreach ($app in $requiredApps) {
@@ -122,7 +126,7 @@ if ($scriptContent -match '(?ms)\$sync\.configs\.applications\s*=\s*@''\s*\r?\n(
             }
         }
         if ($missingApps.Count -eq 0) {
-            Write-Host " PASS ($($requiredApps.Count)/$($requiredApps.Count) new dev/MCP apps verified in catalog)" -ForegroundColor Green
+            Write-Host " PASS ($($requiredApps.Count)/$($requiredApps.Count) tools verified across Android, PHP, Python, and MCP)" -ForegroundColor Green
         } else {
             Write-Host " FAIL (Missing apps: $($missingApps -join ', '))" -ForegroundColor Red
             $allPassed = $false

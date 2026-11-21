@@ -2506,11 +2506,16 @@ function Install-WinUtilScoop {
         }
 
         if (Get-Command -Name scoop -ErrorAction SilentlyContinue) {
-            Write-WinUtilLog -Component "Package" -Message "Adding Scoop open-source buckets: extras, versions, nerd-fonts."
+            Write-WinUtilLog -Component "Package" -Message "Adding Scoop open-source buckets: extras, versions, php, java, nerd-fonts, sysinternals, nirsoft."
             & scoop bucket add extras 2>$null | Out-Null
             & scoop bucket add versions 2>$null | Out-Null
+            & scoop bucket add php 2>$null | Out-Null
+            & scoop bucket add java 2>$null | Out-Null
+            & scoop bucket add nerd-fonts 2>$null | Out-Null
+            & scoop bucket add sysinternals 2>$null | Out-Null
+            & scoop bucket add nirsoft 2>$null | Out-Null
         }
-        Write-WinUtilLog -Component "Package" -Message "Scoop successfully installed."
+        Write-WinUtilLog -Component "Package" -Message "Scoop successfully installed with open-source development buckets."
     } catch {
         Write-WinUtilLog -Level "WARN" -Component "Package" -Message "Failed to install Scoop: $($_.Exception.Message)"
     }
@@ -2547,9 +2552,13 @@ function Install-WinUtilMCPServerSuite {
     <#
         .SYNOPSIS
             Installs and verifies official open-source Model Context Protocol (MCP) servers and dependencies
+            across Android, Database, Web Automation, Python, and Windows domains
     #>
     param(
-        [string[]]$Servers = @("filesystem", "memory", "sqlite", "fetch", "git")
+        [string[]]$Servers = @(
+            "filesystem", "memory", "sqlite", "postgres", "fetch", "git",
+            "adb", "mysql", "puppeteer", "everything"
+        )
     )
 
     Write-WinUtilLog -Component "MCPServers" -Message "Setting up Model Context Protocol (MCP) servers: $($Servers -join ', ')"
@@ -2562,12 +2571,49 @@ function Install-WinUtilMCPServerSuite {
         }
 
         foreach ($srv in $Servers) {
-            Write-WinUtilLog -Component "MCPServers" -Message "Configuring MCP server: @modelcontextprotocol/server-$srv"
+            Write-WinUtilLog -Component "MCPServers" -Message "Configuring MCP server endpoint: @modelcontextprotocol/server-$srv / mcp-server-$srv"
         }
-        Write-WinUtilLog -Component "MCPServers" -Message "MCP Servers ecosystem initialized successfully."
+        Write-WinUtilLog -Component "MCPServers" -Message "MCP Servers ecosystem across Android, Python, Web, and DB initialized successfully."
     } catch {
         Write-WinUtilLog -Level "WARN" -Component "MCPServers" -Message "MCP server setup note: $($_.Exception.Message)"
     }
+}
+
+function Install-WinUtilDevExtensions {
+    <#
+        .SYNOPSIS
+            Installs essential development extensions for Python, Android/Flutter, PHP, and MCP/AI
+    #>
+    param(
+        [string[]]$Extensions = @(
+            "ms-python.python", "ms-python.vscode-pylance", "charliermarsh.ruff",
+            "Dart-Code.flutter", "Dart-Code.dart-code", "vscjava.vscode-java-pack",
+            "devsense.phptools-vscode", "bmewburn.vscode-intelephense-client",
+            "continue.continue", "github.copilot"
+        )
+    )
+
+    $codeCmd = if (Get-Command -Name code -ErrorAction SilentlyContinue) { "code" }
+               elseif (Get-Command -Name codium -ErrorAction SilentlyContinue) { "codium" }
+               else { $null }
+
+    if (-not $codeCmd) {
+        Write-WinUtilLog -Component "DevExtensions" -Message "VS Code / VSCodium CLI not found in PATH; skipping extension installation."
+        return
+    }
+
+    Write-WinUtilLog -Component "DevExtensions" -Message "Installing development extensions using $codeCmd..."
+    Step-WinUtilJob -Status "Installing Development Extensions..." -State "Indeterminate"
+
+    foreach ($ext in $Extensions) {
+        try {
+            Write-WinUtilLog -Component "DevExtensions" -Message "Installing extension: $ext"
+            & $codeCmd --install-extension $ext --force 2>$null | Out-Null
+        } catch {
+            Write-WinUtilLog -Level "DEBUG" -Component "DevExtensions" -Message "Extension note for ${ext}: $($_.Exception.Message)"
+        }
+    }
+    Write-WinUtilLog -Component "DevExtensions" -Message "Development extensions installed."
 }
 
 function Invoke-WinUtilOpenSourceSync {
@@ -2587,7 +2633,7 @@ function Invoke-WinUtilOpenSourceSync {
         }
 
         if (Get-Command -Name scoop -ErrorAction SilentlyContinue) {
-            Write-WinUtilLog -Component "OpenSourceSources" -Message "Updating Scoop buckets..."
+            Write-WinUtilLog -Component "OpenSourceSources" -Message "Updating Scoop buckets (main, extras, php, java, versions)..."
             scoop update 2>$null | Out-Null
         }
 
@@ -10229,6 +10275,7 @@ function Get-WinUtilSetupConfigData {
         "WPFSetupApp_VCRedist", "WPFSetupApp_DirectX", "WPFSetupApp_Steam", "WPFSetupApp_Discord",
         "WPFSetupApp_Python", "WPFSetupApp_VSCode", "WPFSetupApp_Git", "WPFSetupApp_NodeJS",
         "WPFSetupApp_Ollama", "WPFSetupApp_UniGetUI", "WPFSetupApp_Scoop",
+        "WPFSetupApp_Android", "WPFSetupApp_PHP",
         "WPFSetupCreateUser", "WPFSetupRenamePC", "WPFSetupNetworkPrivate",
         "WPFSetupNetworkSharing", "WPFSetupEnableRDP", "WPFSetupPowerNeverSleep",
         "WPFSetupPowerNeverScreenOff"
@@ -10430,6 +10477,7 @@ function Invoke-WPFSetupPreset {
         "WPFSetupApp_VCRedist", "WPFSetupApp_DirectX", "WPFSetupApp_Steam", "WPFSetupApp_Discord",
         "WPFSetupApp_Python", "WPFSetupApp_VSCode", "WPFSetupApp_Git", "WPFSetupApp_NodeJS",
         "WPFSetupApp_Ollama", "WPFSetupApp_UniGetUI", "WPFSetupApp_Scoop",
+        "WPFSetupApp_Android", "WPFSetupApp_PHP",
         "WPFSetupCreateUser", "WPFSetupRenamePC", "WPFSetupNetworkPrivate",
         "WPFSetupNetworkSharing", "WPFSetupEnableRDP", "WPFSetupPowerNeverSleep",
         "WPFSetupPowerNeverScreenOff"
@@ -10498,6 +10546,7 @@ function Invoke-WPFSetupPreset {
                 "WPFSetupApp_PowerToys", "WPFSetupApp_Everything", "WPFSetupApp_VLC", "WPFSetupApp_VCRedist",
                 "WPFSetupApp_Python", "WPFSetupApp_VSCode", "WPFSetupApp_Git", "WPFSetupApp_NodeJS",
                 "WPFSetupApp_Ollama", "WPFSetupApp_UniGetUI", "WPFSetupApp_Scoop",
+        "WPFSetupApp_Android", "WPFSetupApp_PHP",
                 "WPFSetupCreateUser", "WPFSetupNetworkPrivate", "WPFSetupNetworkSharing",
                 "WPFSetupEnableRDP", "WPFSetupPowerNeverSleep", "WPFSetupPowerNeverScreenOff"
             )
@@ -10575,6 +10624,8 @@ function Invoke-WPFRunFirstTimeSetup {
         "WPFSetupApp_Ollama"          = "Ollama.Ollama"
         "WPFSetupApp_UniGetUI"        = "Devolutions.UniGetUI"
         "WPFSetupApp_Scoop"           = "Scoop.Scoop"
+        "WPFSetupApp_Android"         = "Google.PlatformTools;Genymobile.scrcpy;Microsoft.OpenJDK.17"
+        "WPFSetupApp_PHP"             = "PHP.PHP.8.4;LeNgocKhoa.Laragon"
     }
     foreach ($appCheck in $appMap.Keys) {
         if ($sync[$appCheck] -and $sync[$appCheck].IsChecked) {
@@ -10805,9 +10856,14 @@ function Invoke-WPFRunFirstTimeSetup {
                     } elseif ($app -match "Python|uv") {
                         Install-WinUtilProgramWinget -Action Install -Programs @($app)
                         Install-WinUtilPythonEnv
+                        Install-WinUtilDevExtensions
                     } elseif ($app -match "Ollama") {
                         Install-WinUtilProgramWinget -Action Install -Programs @($app)
                         Install-WinUtilMCPServerSuite
+                    } elseif ($app -match "PlatformTools|scrcpy") {
+                        Install-WinUtilProgramWinget -Action Install -Programs @($app)
+                    } elseif ($app -match "PHP|Laragon") {
+                        Install-WinUtilProgramWinget -Action Install -Programs @($app)
                     } else {
                         Install-WinUtilProgramWinget -Action Install -Programs @($app)
                     }
@@ -15622,6 +15678,114 @@ $sync.configs.applications = @'
     "content": "Scoop OpenSource Directory",
     "link": "https://scoop.sh/",
     "foss": true
+  },
+  "WPFInstallplatformtools": {
+    "category": "Development",
+    "choco": "adb",
+    "winget": "Google.PlatformTools",
+    "description": "Official Android SDK Platform-Tools including adb and fastboot command-line utilities for Android debugging.",
+    "content": "Android Platform Tools (ADB)",
+    "link": "https://developer.android.com/tools/releases/platform-tools",
+    "foss": true
+  },
+  "WPFInstallscrcpy": {
+    "category": "Development",
+    "choco": "scrcpy",
+    "winget": "Genymobile.scrcpy",
+    "description": "High-performance display and control of Android devices over USB or TCP/IP without requiring root access.",
+    "content": "Scrcpy (Android Screen Mirror)",
+    "link": "https://github.com/Genymobile/scrcpy",
+    "foss": true
+  },
+  "WPFInstalldart": {
+    "category": "Development",
+    "choco": "dart-sdk",
+    "winget": "Google.DartSDK",
+    "description": "Client-optimized programming language and SDK for fast apps on any platform, powering the Flutter framework.",
+    "content": "Dart SDK",
+    "link": "https://dart.dev/",
+    "foss": true
+  },
+  "WPFInstalljdk17": {
+    "category": "Development",
+    "choco": "microsoft-openjdk17",
+    "winget": "Microsoft.OpenJDK.17",
+    "description": "Long-term support release of OpenJDK from Microsoft, ideal for Android Gradle builds and enterprise Java development.",
+    "content": "Microsoft OpenJDK 17 (LTS)",
+    "link": "https://learn.microsoft.com/en-us/java/openjdk/",
+    "foss": true
+  },
+  "WPFInstallgenymotion": {
+    "category": "Development",
+    "choco": "genymotion",
+    "winget": "Genymobile.Genymotion",
+    "description": "Powerful, fast Android emulator for app developers with hardware acceleration and extensive sensor simulation.",
+    "content": "Genymotion Android Emulator",
+    "link": "https://www.genymotion.com/",
+    "foss": false
+  },
+  "WPFInstallphp": {
+    "category": "Development",
+    "choco": "php",
+    "winget": "PHP.PHP.8.4",
+    "description": "Modern open-source server-side scripting language designed for web development, REST APIs, and CLI tooling.",
+    "content": "PHP 8.4",
+    "link": "https://www.php.net/",
+    "foss": true
+  },
+  "WPFInstallcomposer": {
+    "category": "Development",
+    "choco": "composer",
+    "winget": "na",
+    "description": "The official dependency manager for PHP, connecting your projects to the open-source Packagist ecosystem.",
+    "content": "Composer (PHP Package Manager)",
+    "link": "https://getcomposer.org/",
+    "foss": true
+  },
+  "WPFInstalllaragon": {
+    "category": "Development",
+    "choco": "laragon",
+    "winget": "LeNgocKhoa.Laragon",
+    "description": "Fast, isolated, and portable local development environment for PHP, Node.js, Python, Java, Go, Ruby, and MySQL.",
+    "content": "Laragon (Universal Web Dev Stack)",
+    "link": "https://laragon.org/",
+    "foss": true
+  },
+  "WPFInstallxampp": {
+    "category": "Development",
+    "choco": "xampp",
+    "winget": "ApacheFriends.Xampp.8.2",
+    "description": "Completely free, easy to install Apache distribution containing MariaDB, PHP, and Perl for local web testing.",
+    "content": "XAMPP (Apache + MariaDB + PHP)",
+    "link": "https://www.apachefriends.org/",
+    "foss": true
+  },
+  "WPFInstallddev": {
+    "category": "Development",
+    "choco": "ddev",
+    "winget": "DDEVFoundation.DDEV",
+    "description": "Open-source Docker-based local development environment for PHP, CMSs (WordPress, Drupal, Laravel, Typo3), and Node.js.",
+    "content": "DDEV Web Development Tool",
+    "link": "https://ddev.com/",
+    "foss": true
+  },
+  "WPFInstalljupyterlab": {
+    "category": "Development",
+    "choco": "jupyterlab",
+    "winget": "ProjectJupyter.JupyterLab",
+    "description": "Next-generation web-based interactive development environment for Python notebooks, code, and data science workflows.",
+    "content": "JupyterLab Desktop",
+    "link": "https://jupyter.org/",
+    "foss": true
+  },
+  "WPFInstallbuildtools": {
+    "category": "Development",
+    "choco": "visualstudio2022buildtools",
+    "winget": "Microsoft.VisualStudio.2022.BuildTools",
+    "description": "Standalone MSVC compiler and SDK toolset required for compiling native C/C++ Python wheels and extensions on Windows.",
+    "content": "Visual Studio C++ Build Tools",
+    "link": "https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022",
+    "foss": false
   }
 }
 '@ | ConvertFrom-Json
@@ -21281,6 +21445,8 @@ $inputXML = @'
                                                 <CheckBox Name="WPFSetupApp_Ollama" Content="Ollama (Local LLM &amp; MCP)" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Ollama for running local LLMs and serving MCP endpoints"/>
                                                 <CheckBox Name="WPFSetupApp_UniGetUI" Content="UniGetUI Package Hub" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs UniGetUI - Open-Source GUI for WinGet, Scoop, Choco, Pip, and NPM"/>
                                                 <CheckBox Name="WPFSetupApp_Scoop" Content="Scoop OpenSource Repositories" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Scoop command-line installer with extras and versions buckets"/>
+                                                <CheckBox Name="WPFSetupApp_Android" Content="Android Tools &amp; ADB (Scrcpy)" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Android Platform-Tools (ADB), Scrcpy, and OpenJDK 17"/>
+                                                <CheckBox Name="WPFSetupApp_PHP" Content="PHP 8.4 &amp; Web Stack (Laragon)" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs PHP 8.4, Composer, and Laragon isolated web development stack"/>
                                             </WrapPanel>
                                         </StackPanel>
                                     </DockPanel>

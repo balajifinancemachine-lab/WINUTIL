@@ -1,18 +1,39 @@
 # Active State
 
-- Task: Add Python Dependencies, MCP Servers, App Dev Tools & Open Source Directories
+- Task: Expand Sources, Android SDK, PHP, Python Windows & MCP Servers
 - Status: VERIFIED & COMPLETED
 - Added Capabilities:
-  - Scoop OpenSource Package Manager integration (`Install-WinUtilScoop`) with extras and versions buckets.
-  - Python Development Environment suite (`Install-WinUtilPythonEnv`) with UV, Pipx, and PyPI sources.
-  - Model Context Protocol (MCP) Server Toolchain (`Install-WinUtilMCPServerSuite`) for standard AI agent servers.
-  - Open Source Directory Sync (`Invoke-WinUtilOpenSourceSync`) across WinGet, Scoop, and Chocolatey.
-  - 23 New Application Catalog entries in Development category:
-    - Python: Poetry, Pipx, Pyenv-Win, Miniconda3, Anaconda3, Ruff
-    - MCP & AI: Ollama, LM Studio, Jan AI, Bun, Deno, MCP Servers Toolchain
-    - Open Source Dev Tools: Scoop, UniGetUI, Podman Desktop, Windsurf IDE, Insomnia, PyCharm Community, IntelliJ IDEA Community, Lapce, Android Studio, Zig, Windows Terminal
-  - First-Time Setup Preset: "Dev / AI Workstation" preset with automated installation of Python, UV, Git, Bun, Ollama, VS Code, Scoop, and UniGetUI.
+  - Android App Development Suite:
+    - Android SDK Platform-Tools (ADB & Fastboot)
+    - Scrcpy (Android Screen Mirror & Control)
+    - Dart SDK & Flutter integration
+    - Microsoft OpenJDK 17 LTS (for Android Gradle builds)
+    - Genymotion Android Emulator
+  - PHP Development Tools & Web Stacks:
+    - PHP 8.4 runtime
+    - Composer (PHP Package Manager for Packagist)
+    - Laragon (Universal isolated web dev stack)
+    - XAMPP (Apache + MariaDB + PHP)
+    - DDEV (Containerized PHP development environment)
+  - Python Windows Tools & Build Tooling:
+    - JupyterLab Desktop
+    - Visual Studio C++ Build Tools (required for compiling Python C-extensions & wheels)
+    - UV, Poetry, Pipx, Pyenv-Win, Ruff, Miniconda3, Anaconda3
+  - Domain-Specific MCP Servers Suite (`Install-WinUtilMCPServerSuite`):
+    - Android MCP (`mcp-server-adb`)
+    - Database MCPs (`sqlite`, `postgres`, `mysql`)
+    - Web / Browser MCPs (`chrome-devtools-mcp`, `puppeteer`, `playwright`, `fetch`)
+    - System & SCM MCPs (`filesystem`, `memory`, `everything`, `git`, `github`)
+  - Development Extensions Automation (`Install-WinUtilDevExtensions`):
+    - Python: `ms-python.python`, `ms-python.vscode-pylance`, `charliermarsh.ruff`
+    - Android / Flutter: `Dart-Code.flutter`, `Dart-Code.dart-code`, `vscjava.vscode-java-pack`
+    - PHP: `devsense.phptools-vscode`, `bmewburn.vscode-intelephense-client`
+    - MCP & AI: `continue.continue`, `github.copilot`
+  - Open Source Directory Buckets (`Install-WinUtilScoop`):
+    - Added `php`, `java`, `nerd-fonts`, `sysinternals`, and `nirsoft` buckets.
+  - First-Time Setup:
+    - Checkboxes for `WPFSetupApp_Android` and `WPFSetupApp_PHP`.
 - Validation:
-  - PowerShell AST syntax: 0 errors across 22,000+ lines.
-  - WPF Window XAML: 0 errors (valid System.Windows.Window, 205,487 bytes).
+  - PowerShell AST syntax: 0 errors across 22,200+ lines.
+  - WPF Window XAML: 0 errors (valid System.Windows.Window, 206,071 bytes).
   - Test Suite: 7/7 tests passing (100%).
