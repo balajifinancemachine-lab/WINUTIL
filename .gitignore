@@ -1,0 +1,21 @@
+# Local and Private Memory
+.agent-memory/private/
+
+# Machine Setup Configurations & Backups
+*Config_*.json
+WinUtil_PC_Setup_Config.json
+*.reg
+*.iso
+*.wim
+*.esd
+
+# Logs and Transcripts
+*.log
+*.transcript
+
+# IDE & OS Caches
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+*.tmp
