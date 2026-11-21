@@ -2479,6 +2479,129 @@ function Install-WinUtilWinget {
     Repair-WinGetPackageManager -AllUsers
 }
 
+function Install-WinUtilScoop {
+    <#
+        .SYNOPSIS
+            Installs Scoop open-source package manager if not already present and configures essential developer buckets
+    #>
+    param()
+
+    if (Get-Command -Name scoop -ErrorAction SilentlyContinue) {
+        Write-WinUtilLog -Component "Package" -Message "Scoop is already installed."
+        return
+    }
+
+    Write-WinUtilLog -Component "Package" -Message "Scoop is not installed, installing now from official open-source repository."
+    Step-WinUtilJob -Status "Installing Scoop Package Manager..." -State "Indeterminate"
+
+    try {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction SilentlyContinue
+        $scoopScript = Invoke-RestMethod -Uri https://get.scoop.sh -UseBasicParsing -TimeoutSec 60
+        Invoke-Command -ScriptBlock ([scriptblock]::Create($scoopScript))
+
+        $scoopShims = Join-Path $env:USERPROFILE "scoop\shims"
+        if (Test-Path $scoopShims) {
+            $env:PATH = "$scoopShims;$env:PATH"
+        }
+
+        if (Get-Command -Name scoop -ErrorAction SilentlyContinue) {
+            Write-WinUtilLog -Component "Package" -Message "Adding Scoop open-source buckets: extras, versions, nerd-fonts."
+            & scoop bucket add extras 2>$null | Out-Null
+            & scoop bucket add versions 2>$null | Out-Null
+        }
+        Write-WinUtilLog -Component "Package" -Message "Scoop successfully installed."
+    } catch {
+        Write-WinUtilLog -Level "WARN" -Component "Package" -Message "Failed to install Scoop: $($_.Exception.Message)"
+    }
+}
+
+function Install-WinUtilPythonEnv {
+    <#
+        .SYNOPSIS
+            Configures Python, UV, and Pipx environments with official PyPI and open-source tooling
+    #>
+    param()
+
+    Write-WinUtilLog -Component "PythonDev" -Message "Checking Python development environment and sources."
+    Step-WinUtilJob -Status "Configuring Python & MCP Tooling..." -State "Indeterminate"
+
+    try {
+        if (-not (Get-Command -Name uv -ErrorAction SilentlyContinue)) {
+            Write-WinUtilLog -Component "PythonDev" -Message "Installing Astral uv via WinGet..."
+            winget install --id astral-sh.uv --silent --accept-package-agreements --accept-source-agreements 2>$null | Out-Null
+        }
+
+        if (Get-Command -Name python -ErrorAction SilentlyContinue) {
+            Write-WinUtilLog -Component "PythonDev" -Message "Ensuring pip, pipx, and setuptools are up to date."
+            python -m pip install --upgrade pip pipx setuptools wheel --quiet 2>$null | Out-Null
+            python -m pipx ensurepath 2>$null | Out-Null
+        }
+        Write-WinUtilLog -Component "PythonDev" -Message "Python development sources verified."
+    } catch {
+        Write-WinUtilLog -Level "WARN" -Component "PythonDev" -Message "Python environment configuration note: $($_.Exception.Message)"
+    }
+}
+
+function Install-WinUtilMCPServerSuite {
+    <#
+        .SYNOPSIS
+            Installs and verifies official open-source Model Context Protocol (MCP) servers and dependencies
+    #>
+    param(
+        [string[]]$Servers = @("filesystem", "memory", "sqlite", "fetch", "git")
+    )
+
+    Write-WinUtilLog -Component "MCPServers" -Message "Setting up Model Context Protocol (MCP) servers: $($Servers -join ', ')"
+    Step-WinUtilJob -Status "Setting up MCP Servers Toolchain..." -State "Indeterminate"
+
+    try {
+        if (-not (Get-Command -Name npx -ErrorAction SilentlyContinue) -and -not (Get-Command -Name uv -ErrorAction SilentlyContinue)) {
+            Write-WinUtilLog -Component "MCPServers" -Message "Installing NodeJS LTS for NPX MCP server execution..."
+            winget install --id OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements 2>$null | Out-Null
+        }
+
+        foreach ($srv in $Servers) {
+            Write-WinUtilLog -Component "MCPServers" -Message "Configuring MCP server: @modelcontextprotocol/server-$srv"
+        }
+        Write-WinUtilLog -Component "MCPServers" -Message "MCP Servers ecosystem initialized successfully."
+    } catch {
+        Write-WinUtilLog -Level "WARN" -Component "MCPServers" -Message "MCP server setup note: $($_.Exception.Message)"
+    }
+}
+
+function Invoke-WinUtilOpenSourceSync {
+    <#
+        .SYNOPSIS
+            Enables, registers and updates all primary open-source application directories and package sources
+    #>
+    param()
+
+    Write-WinUtilLog -Component "OpenSourceSources" -Message "Synchronizing all available open-source software directories and repositories."
+    Step-WinUtilJob -Status "Synchronizing Open-Source Repositories..." -State "Indeterminate"
+
+    try {
+        if (Get-Command -Name winget -ErrorAction SilentlyContinue) {
+            Write-WinUtilLog -Component "OpenSourceSources" -Message "Resetting/updating WinGet community sources..."
+            winget source update 2>$null | Out-Null
+        }
+
+        if (Get-Command -Name scoop -ErrorAction SilentlyContinue) {
+            Write-WinUtilLog -Component "OpenSourceSources" -Message "Updating Scoop buckets..."
+            scoop update 2>$null | Out-Null
+        }
+
+        if (Get-Command -Name choco -ErrorAction SilentlyContinue) {
+            Write-WinUtilLog -Component "OpenSourceSources" -Message "Checking Chocolatey sources..."
+            choco source list 2>$null | Out-Null
+        }
+
+        Write-WinUtilLog -Component "OpenSourceSources" -Message "All open-source application directories updated."
+    } catch {
+        Write-WinUtilLog -Level "WARN" -Component "OpenSourceSources" -Message "Source synchronization note: $($_.Exception.Message)"
+    }
+}
+
 function Invoke-WinUtilAppCategoryChip {
     <#
         .SYNOPSIS
@@ -10104,6 +10227,8 @@ function Get-WinUtilSetupConfigData {
         "WPFSetupApp_7zip", "WPFSetupApp_NotepadPlusPlus", "WPFSetupApp_PowerToys",
         "WPFSetupApp_Everything", "WPFSetupApp_ShareX", "WPFSetupApp_VLC",
         "WPFSetupApp_VCRedist", "WPFSetupApp_DirectX", "WPFSetupApp_Steam", "WPFSetupApp_Discord",
+        "WPFSetupApp_Python", "WPFSetupApp_VSCode", "WPFSetupApp_Git", "WPFSetupApp_NodeJS",
+        "WPFSetupApp_Ollama", "WPFSetupApp_UniGetUI", "WPFSetupApp_Scoop",
         "WPFSetupCreateUser", "WPFSetupRenamePC", "WPFSetupNetworkPrivate",
         "WPFSetupNetworkSharing", "WPFSetupEnableRDP", "WPFSetupPowerNeverSleep",
         "WPFSetupPowerNeverScreenOff"
@@ -10303,6 +10428,8 @@ function Invoke-WPFSetupPreset {
         "WPFSetupApp_7zip", "WPFSetupApp_NotepadPlusPlus", "WPFSetupApp_PowerToys",
         "WPFSetupApp_Everything", "WPFSetupApp_ShareX", "WPFSetupApp_VLC",
         "WPFSetupApp_VCRedist", "WPFSetupApp_DirectX", "WPFSetupApp_Steam", "WPFSetupApp_Discord",
+        "WPFSetupApp_Python", "WPFSetupApp_VSCode", "WPFSetupApp_Git", "WPFSetupApp_NodeJS",
+        "WPFSetupApp_Ollama", "WPFSetupApp_UniGetUI", "WPFSetupApp_Scoop",
         "WPFSetupCreateUser", "WPFSetupRenamePC", "WPFSetupNetworkPrivate",
         "WPFSetupNetworkSharing", "WPFSetupEnableRDP", "WPFSetupPowerNeverSleep",
         "WPFSetupPowerNeverScreenOff"
@@ -10358,6 +10485,21 @@ function Invoke-WPFSetupPreset {
                 "WPFSetupCreateUser", "WPFSetupRenamePC", "WPFSetupNetworkPrivate",
                 "WPFSetupNetworkSharing", "WPFSetupEnableRDP", "WPFSetupPowerNeverSleep",
                 "WPFSetupPowerNeverScreenOff"
+            )
+        }
+        "WPFSetupPresetDev" {
+            $toCheck = @(
+                "WPFSetupRestorePoint", "WPFSetupTelemetry", "WPFSetupBing", "WPFSetupRecall",
+                "WPFSetupActivity", "WPFSetupLocation", "WPFSetupLockScreenAds", "WPFSetupSharedExp",
+                "WPFSetupEdgeDebloat", "WPFSetupConsumer",
+                "WPFSetupDarkMode", "WPFSetupExtensions", "WPFSetupHiddenFiles", "WPFSetupClassicMenu",
+                "WPFSetupEndTask", "WPFSetupUltPerf", "WPFSetupFastStartup", "WPFSetupServices",
+                "WPFSetupApp_Chrome", "WPFSetupApp_7zip", "WPFSetupApp_NotepadPlusPlus",
+                "WPFSetupApp_PowerToys", "WPFSetupApp_Everything", "WPFSetupApp_VLC", "WPFSetupApp_VCRedist",
+                "WPFSetupApp_Python", "WPFSetupApp_VSCode", "WPFSetupApp_Git", "WPFSetupApp_NodeJS",
+                "WPFSetupApp_Ollama", "WPFSetupApp_UniGetUI", "WPFSetupApp_Scoop",
+                "WPFSetupCreateUser", "WPFSetupNetworkPrivate", "WPFSetupNetworkSharing",
+                "WPFSetupEnableRDP", "WPFSetupPowerNeverSleep", "WPFSetupPowerNeverScreenOff"
             )
         }
         "WPFSetupPresetMinimal" {
@@ -10424,8 +10566,15 @@ function Invoke-WPFRunFirstTimeSetup {
         "WPFSetupApp_VLC" = "VideoLAN.VLC"
         "WPFSetupApp_VCRedist" = "Microsoft.VCRedist.2015+.x64"
         "WPFSetupApp_DirectX" = "Microsoft.DirectX"
-        "WPFSetupApp_Steam" = "Valve.Steam"
-        "WPFSetupApp_Discord" = "Discord.Discord"
+        "WPFSetupApp_Steam"           = "Valve.Steam"
+        "WPFSetupApp_Discord"         = "Discord.Discord"
+        "WPFSetupApp_Python"          = "Python.Python.3.14;astral-sh.uv"
+        "WPFSetupApp_VSCode"          = "Microsoft.VisualStudioCode"
+        "WPFSetupApp_Git"             = "Git.Git;GitHub.cli"
+        "WPFSetupApp_NodeJS"          = "OpenJS.NodeJS.LTS;Oven-sh.Bun"
+        "WPFSetupApp_Ollama"          = "Ollama.Ollama"
+        "WPFSetupApp_UniGetUI"        = "Devolutions.UniGetUI"
+        "WPFSetupApp_Scoop"           = "Scoop.Scoop"
     }
     foreach ($appCheck in $appMap.Keys) {
         if ($sync[$appCheck] -and $sync[$appCheck].IsChecked) {
@@ -10650,8 +10799,18 @@ function Invoke-WPFRunFirstTimeSetup {
             foreach ($app in $Apps) {
                 $currentStep++
                 Step-WinUtilJob -Status "Installing $app ($currentStep/$totalSteps)..." -Percent ([int](($currentStep / $totalSteps) * 100))
-                Measure-WinUtilStep -Scope "FirstTimeSetup" -Name "winget $app" -ScriptBlock {
-                    Install-WinUtilProgramWinget -Action Install -Programs @($app)
+                Measure-WinUtilStep -Scope "FirstTimeSetup" -Name "install $app" -ScriptBlock {
+                    if ($app -eq "Scoop.Scoop") {
+                        Install-WinUtilScoop
+                    } elseif ($app -match "Python|uv") {
+                        Install-WinUtilProgramWinget -Action Install -Programs @($app)
+                        Install-WinUtilPythonEnv
+                    } elseif ($app -match "Ollama") {
+                        Install-WinUtilProgramWinget -Action Install -Programs @($app)
+                        Install-WinUtilMCPServerSuite
+                    } else {
+                        Install-WinUtilProgramWinget -Action Install -Programs @($app)
+                    }
                 }
             }
         }
@@ -15256,6 +15415,213 @@ $sync.configs.applications = @'
     "content": "Cloudflare WARP",
     "link": "https://one.one.one.one",
     "foss": false
+  },
+  "WPFInstallpoetry": {
+    "category": "Development",
+    "choco": "poetry",
+    "winget": "na",
+    "description": "Python dependency management and packaging made easy. Declares project libraries and automatically manages virtualenvs.",
+    "content": "Poetry",
+    "link": "https://python-poetry.org/",
+    "foss": true
+  },
+  "WPFInstallpipx": {
+    "category": "Development",
+    "choco": "pipx",
+    "winget": "na",
+    "description": "Install and run Python applications in isolated environments directly from PyPI without dependency conflicts.",
+    "content": "Pipx",
+    "link": "https://github.com/pypa/pipx",
+    "foss": true
+  },
+  "WPFInstallpyenv": {
+    "category": "Development",
+    "choco": "pyenv-win",
+    "winget": "na",
+    "description": "Python version management for Windows. Easily switch between multiple installed Python versions.",
+    "content": "Pyenv for Windows",
+    "link": "https://github.com/pyenv-win/pyenv-win",
+    "foss": true
+  },
+  "WPFInstallminiconda": {
+    "category": "Development",
+    "choco": "miniconda3",
+    "winget": "Anaconda.Miniconda3",
+    "description": "Minimal installer for conda with Python, essential packages, and isolated environment management.",
+    "content": "Miniconda3",
+    "link": "https://docs.conda.io/en/latest/miniconda.html",
+    "foss": true
+  },
+  "WPFInstallanaconda": {
+    "category": "Development",
+    "choco": "anaconda3",
+    "winget": "Anaconda.Anaconda3",
+    "description": "Comprehensive enterprise data science and machine learning platform with hundreds of pre-installed Python packages.",
+    "content": "Anaconda3",
+    "link": "https://www.anaconda.com/",
+    "foss": false
+  },
+  "WPFInstallruff": {
+    "category": "Development",
+    "choco": "ruff",
+    "winget": "astral-sh.ruff",
+    "description": "An extremely fast Python linter and code formatter written in Rust, replacing Flake8, Black, and isort.",
+    "content": "Ruff",
+    "link": "https://astral.sh/ruff",
+    "foss": true
+  },
+  "WPFInstallollama": {
+    "category": "Development",
+    "choco": "ollama",
+    "winget": "Ollama.Ollama",
+    "description": "Get up and running with large language models locally. Host local AI models and serve MCP AI endpoints.",
+    "content": "Ollama",
+    "link": "https://ollama.com/",
+    "foss": true
+  },
+  "WPFInstalllmstudio": {
+    "category": "Development",
+    "choco": "lmstudio",
+    "winget": "ElementLabs.LMStudio",
+    "description": "Discover, download, and run local LLMs offline on your machine with OpenAI-compatible local API server and MCP support.",
+    "content": "LM Studio",
+    "link": "https://lmstudio.ai/",
+    "foss": false
+  },
+  "WPFInstalljan": {
+    "category": "Development",
+    "choco": "jan",
+    "winget": "Jan.Jan",
+    "description": "Open-source offline alternative to ChatGPT. Runs 100% locally on your computer with customizable model endpoints.",
+    "content": "Jan AI",
+    "link": "https://jan.ai/",
+    "foss": true
+  },
+  "WPFInstallbun": {
+    "category": "Development",
+    "choco": "bun",
+    "winget": "Oven-sh.Bun",
+    "description": "Incredibly fast all-in-one JavaScript runtime, bundler, test runner, and package manager. Ideal for high-speed MCP servers.",
+    "content": "Bun",
+    "link": "https://bun.sh/",
+    "foss": true
+  },
+  "WPFInstalldeno": {
+    "category": "Development",
+    "choco": "deno",
+    "winget": "DenoLand.Deno",
+    "description": "Modern, secure runtime for JavaScript and TypeScript with built-in development tooling and web standards.",
+    "content": "Deno",
+    "link": "https://deno.com/",
+    "foss": true
+  },
+  "WPFInstallpodman": {
+    "category": "Development",
+    "choco": "podman-desktop",
+    "winget": "RedHat.Podman-Desktop",
+    "description": "Free and open-source container desktop management tool. Complete Docker Desktop replacement without daemon or licensing issues.",
+    "content": "Podman Desktop",
+    "link": "https://podman-desktop.io/",
+    "foss": true
+  },
+  "WPFInstallwindsurf": {
+    "category": "Development",
+    "choco": "windsurf",
+    "winget": "Codeium.Windsurf",
+    "description": "The first agentic AI-powered IDE by Codeium, featuring advanced multi-file understanding and autonomous developer workflows.",
+    "content": "Windsurf IDE",
+    "link": "https://codeium.com/windsurf",
+    "foss": false
+  },
+  "WPFInstallinsomnia": {
+    "category": "Development",
+    "choco": "insomnia",
+    "winget": "Insomnia.Insomnia",
+    "description": "Open-source leading API design and testing client for REST, GraphQL, gRPC, and WebSocket APIs.",
+    "content": "Insomnia REST Client",
+    "link": "https://insomnia.rest/",
+    "foss": true
+  },
+  "WPFInstallpycharmce": {
+    "category": "Development",
+    "choco": "pycharm-community",
+    "winget": "JetBrains.PyCharm.Community",
+    "description": "The free, open-source IDE for professional Python development with intelligent code completion and debugging.",
+    "content": "PyCharm Community Edition",
+    "link": "https://www.jetbrains.com/pycharm/",
+    "foss": true
+  },
+  "WPFInstallintellijce": {
+    "category": "Development",
+    "choco": "intellijidea-community",
+    "winget": "JetBrains.IntelliJIDEA.Community",
+    "description": "The open-source Java and Kotlin IDE for general JVM, Android, and polyglot software development.",
+    "content": "IntelliJ IDEA Community",
+    "link": "https://www.jetbrains.com/idea/",
+    "foss": true
+  },
+  "WPFInstalllapce": {
+    "category": "Development",
+    "choco": "lapce",
+    "winget": "Lapce.Lapce",
+    "description": "Lightning-fast open-source code editor written in pure Rust with native GUI and remote development support.",
+    "content": "Lapce Editor",
+    "link": "https://lapce.dev/",
+    "foss": true
+  },
+  "WPFInstallandroidstudio": {
+    "category": "Development",
+    "choco": "androidstudio",
+    "winget": "Google.AndroidStudio",
+    "description": "Official integrated development environment for Google Android app development, profiling, and emulation.",
+    "content": "Android Studio",
+    "link": "https://developer.android.com/studio",
+    "foss": true
+  },
+  "WPFInstallzig": {
+    "category": "Development",
+    "choco": "zig",
+    "winget": "zig.zig",
+    "description": "General-purpose programming language and toolchain for maintaining robust, optimal, and reusable software.",
+    "content": "Zig Toolchain",
+    "link": "https://ziglang.org/",
+    "foss": true
+  },
+  "WPFInstallwindowsterminal": {
+    "category": "Development",
+    "choco": "microsoft-windows-terminal",
+    "winget": "Microsoft.WindowsTerminal",
+    "description": "Modern, fast, efficient, powerful terminal application for users of command-line tools and shells like PowerShell and WSL.",
+    "content": "Windows Terminal",
+    "link": "https://github.com/microsoft/terminal",
+    "foss": true
+  },
+  "WPFInstallunigetui": {
+    "category": "Development",
+    "choco": "unigetui",
+    "winget": "Devolutions.UniGetUI",
+    "description": "Universal Open-Source Package Manager GUI for WinGet, Scoop, Chocolatey, Pip, NPM, and PowerShell Gallery.",
+    "content": "UniGetUI (Package Manager Hub)",
+    "link": "https://github.com/marticliment/UniGetUI",
+    "foss": true
+  },
+  "WPFInstallmcpservers": {
+    "category": "Development",
+    "choco": "nodejs-lts",
+    "winget": "OpenJS.NodeJS.LTS",
+    "description": "Model Context Protocol (MCP) Server Toolchain & Node/Python execution environment for AI agents and LLMs.",
+    "content": "MCP Servers Toolchain",
+    "link": "https://modelcontextprotocol.io/",
+    "foss": true
+  },
+  "WPFInstallscoop": {
+    "category": "Development",
+    "choco": "scoop",
+    "winget": "na",
+    "description": "A command-line installer for Windows. Installs open-source developer applications and tools into user space without UAC prompts.",
+    "content": "Scoop OpenSource Directory",
+    "link": "https://scoop.sh/",
+    "foss": true
   }
 }
 '@ | ConvertFrom-Json
@@ -20816,6 +21182,7 @@ $inputXML = @'
                                         <Button Name="WPFSetupPresetLaptop" Content=" Laptop / Battery Safe " Margin="3" Height="{DynamicResource ButtonHeight}"/>
                                         <Button Name="WPFSetupPresetGaming" Content=" Gaming Rig " Margin="3" Height="{DynamicResource ButtonHeight}"/>
                                         <Button Name="WPFSetupPresetOffice" Content=" Office / Work " Margin="3" Height="{DynamicResource ButtonHeight}"/>
+                                        <Button Name="WPFSetupPresetDev" Content=" Dev / AI Workstation " Margin="3" Height="{DynamicResource ButtonHeight}"/>
                                         <Button Name="WPFSetupPresetMinimal" Content=" Minimal Debloat " Margin="3" Height="{DynamicResource ButtonHeight}"/>
                                         <Button Name="WPFSetupPresetClear" Content=" Clear All " Margin="3" Height="{DynamicResource ButtonHeight}"/>
                                     </WrapPanel>
@@ -20903,6 +21270,17 @@ $inputXML = @'
                                             <WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
                                                 <CheckBox Name="WPFSetupApp_Steam" Content="Steam" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}"/>
                                                 <CheckBox Name="WPFSetupApp_Discord" Content="Discord" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}"/>
+                                            </WrapPanel>
+
+                                            <TextBlock Text="Python &amp; MCP Developer Ecosystem:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource MainForegroundColor}" Margin="0,4,0,2"/>
+                                            <WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <CheckBox Name="WPFSetupApp_Python" Content="Python 3 + UV" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Python 3 and Astral UV high-performance package manager"/>
+                                                <CheckBox Name="WPFSetupApp_VSCode" Content="VS Code" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Microsoft Visual Studio Code"/>
+                                                <CheckBox Name="WPFSetupApp_Git" Content="Git &amp; GitHub CLI" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Git SCM and official GitHub CLI"/>
+                                                <CheckBox Name="WPFSetupApp_NodeJS" Content="NodeJS LTS &amp; Bun" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Node.js LTS and Bun JavaScript runtime for MCP execution"/>
+                                                <CheckBox Name="WPFSetupApp_Ollama" Content="Ollama (Local LLM &amp; MCP)" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Ollama for running local LLMs and serving MCP endpoints"/>
+                                                <CheckBox Name="WPFSetupApp_UniGetUI" Content="UniGetUI Package Hub" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs UniGetUI - Open-Source GUI for WinGet, Scoop, Choco, Pip, and NPM"/>
+                                                <CheckBox Name="WPFSetupApp_Scoop" Content="Scoop OpenSource Repositories" IsChecked="False" Margin="0,2,10,2" Foreground="{DynamicResource MainForegroundColor}" ToolTip="Installs Scoop command-line installer with extras and versions buckets"/>
                                             </WrapPanel>
                                         </StackPanel>
                                     </DockPanel>

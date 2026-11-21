@@ -1,5 +1,5 @@
 # WinUtil Test Suite
-# Tests syntax, XAML parsing, critical functions, and configuration handling
+# Tests syntax, XAML parsing, critical functions, open-source sources, and configuration handling
 
 $ErrorActionPreference = "Stop"
 $scriptPath = Join-Path $PSScriptRoot "winutil.ps1"
@@ -81,8 +81,63 @@ if ($missingFunctions.Count -eq 0) {
     $allPassed = $false
 }
 
-# Test 5: PSScriptAnalyzer High-Priority Security & Cleanliness Rules
-Write-Host "[Test 5] PSScriptAnalyzer Rules Check..." -NoNewline
+# Test 5: Open-Source Sources & MCP Ecosystem Providers
+Write-Host "[Test 5] Open-Source Sources & MCP Providers..." -NoNewline
+$sourceFunctions = @(
+    "Install-WinUtilScoop",
+    "Install-WinUtilPythonEnv",
+    "Install-WinUtilMCPServerSuite",
+    "Invoke-WinUtilOpenSourceSync"
+)
+$missingSources = @()
+foreach ($sfn in $sourceFunctions) {
+    if ($scriptContent -notmatch "(?m)function\s+$sfn\b") {
+        $missingSources += $sfn
+    }
+}
+if ($missingSources.Count -eq 0) {
+    Write-Host " PASS ($($sourceFunctions.Count)/$($sourceFunctions.Count) source handlers present)" -ForegroundColor Green
+} else {
+    Write-Host " FAIL (Missing: $($missingSources -join ', '))" -ForegroundColor Red
+    $allPassed = $false
+}
+
+# Test 6: Python & MCP Development Package Catalog
+Write-Host "[Test 6] Python & MCP Development Catalog..." -NoNewline
+if ($scriptContent -match '(?ms)\$sync\.configs\.applications\s*=\s*@''\s*\r?\n(.*?)''@\s*\|\s*ConvertFrom-Json') {
+    try {
+        $appsJson = $matches[1] | ConvertFrom-Json
+        $requiredApps = @(
+            "WPFInstallpoetry", "WPFInstallpipx", "WPFInstallpyenv", "WPFInstallminiconda",
+            "WPFInstallanaconda", "WPFInstallruff", "WPFInstallollama", "WPFInstalllmstudio",
+            "WPFInstalljan", "WPFInstallbun", "WPFInstalldeno", "WPFInstallpodman",
+            "WPFInstallwindsurf", "WPFInstallinsomnia", "WPFInstallpycharmce", "WPFInstallintellijce",
+            "WPFInstalllapce", "WPFInstallandroidstudio", "WPFInstallzig", "WPFInstallwindowsterminal",
+            "WPFInstallunigetui", "WPFInstallmcpservers", "WPFInstallscoop"
+        )
+        $missingApps = @()
+        foreach ($app in $requiredApps) {
+            if ($null -eq $appsJson.$app) {
+                $missingApps += $app
+            }
+        }
+        if ($missingApps.Count -eq 0) {
+            Write-Host " PASS ($($requiredApps.Count)/$($requiredApps.Count) new dev/MCP apps verified in catalog)" -ForegroundColor Green
+        } else {
+            Write-Host " FAIL (Missing apps: $($missingApps -join ', '))" -ForegroundColor Red
+            $allPassed = $false
+        }
+    } catch {
+        Write-Host " FAIL (JSON parse error: $($_.Exception.Message))" -ForegroundColor Red
+        $allPassed = $false
+    }
+} else {
+    Write-Host " FAIL (Could not find `$sync.configs.applications block)" -ForegroundColor Red
+    $allPassed = $false
+}
+
+# Test 7: PSScriptAnalyzer High-Priority Security & Cleanliness Rules
+Write-Host "[Test 7] PSScriptAnalyzer Security Rules..." -NoNewline
 if (Get-Command Invoke-ScriptAnalyzer -ErrorAction SilentlyContinue) {
     $rules = @("PSAvoidUsingConvertToSecureStringWithPlainText", "PSAvoidUsingEmptyCatchBlock")
     $findings = Invoke-ScriptAnalyzer -Path $scriptPath -IncludeRule $rules
